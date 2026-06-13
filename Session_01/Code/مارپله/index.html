@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎲 بازی مارپله</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lalezar&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --board-size: min(90vw, 560px);
+    --cell: calc(var(--board-size) / 10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Vazirmatn", Tahoma, sans-serif;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+    color: #fff;
+    user-select: none;
+  }
+  h1 {
+    font-family: "Lalezar", "Vazirmatn", cursive;
+    font-weight: 400;
+    font-size: 40px;
+    letter-spacing: .5px;
+    margin-bottom: 12px;
+    text-shadow: 0 2px 6px rgba(0,0,0,.4);
+  }
+
+  /* صفحه‌ی شروع */
+  #setup {
+    background: rgba(255,255,255,.12);
+    padding: 24px 32px;
+    border-radius: 16px;
+    text-align: center;
+    backdrop-filter: blur(6px);
+  }
+  #setup p { margin-bottom: 14px; font-size: 18px; }
+  .count-btn, .action-btn {
+    font-family: "Lalezar", "Vazirmatn", cursive;
+    font-size: 20px;
+    font-weight: 400;
+    letter-spacing: .5px;
+    padding: 10px 24px;
+    margin: 6px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    background: #ffd24d;
+    color: #1e3c72;
+    transition: transform .12s, box-shadow .12s;
+    box-shadow: 0 4px 0 #c9a227;
+  }
+  .count-btn:hover, .action-btn:hover { transform: translateY(-2px); }
+  .count-btn:active, .action-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #c9a227; }
+  .count-btn.selected { background: #4caf50; color: #fff; box-shadow: 0 4px 0 #357a38; }
+
+  /* بازی */
+  #game { display: none; flex-direction: column; align-items: center; gap: 16px; }
+
+  .board-wrap { position: relative; }
+  #board {
+    direction: ltr;            /* خانه‌ی ۱ پایین‌چپ */
+    width: var(--board-size);
+    height: var(--board-size);
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    grid-template-rows: repeat(10, 1fr);
+    border: 4px solid #ffd24d;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,.4);
+  }
+  .cell {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    font-size: calc(var(--cell) * .2);
+    font-weight: 700;
+    padding: 2px 4px;
+    color: rgba(0,0,0,.5);
+    /* خط‌های شطرنجی بین خانه‌ها */
+    box-shadow: inset 0 0 0 0.5px rgba(0,0,0,.08);
+  }
+  .cell.light { background: #f4ead2; }
+  .cell.dark  { background: #c9a063; }
+  .cell.start { background: #8bc34a; color: #1b5e20; }
+  .cell.finish { background: #ff8a65; color: #5d1a00; }
+
+  /* لایه‌ی مار و نردبان */
+  #links {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+    overflow: visible;
+  }
+
+  /* مهره‌ها */
+  #pawns { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+  .pawn {
+    position: absolute;
+    width: calc(var(--cell) * .42);
+    height: calc(var(--cell) * .42);
+    border-radius: 50%;
+    border: 2px solid rgba(0,0,0,.4);
+    box-shadow: 0 2px 5px rgba(0,0,0,.4);
+    transition: left .25s ease, top .25s ease;
+    transform: translate(-50%, -50%);
+  }
+
+  /* کنترل‌ها */
+  #panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: var(--board-size);
+  }
+  #players-bar { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .pchip {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,.12);
+    padding: 6px 12px; border-radius: 20px; font-size: 15px;
+    border: 2px solid transparent;
+  }
+  .pchip.active { border-color: #ffd24d; background: rgba(255,210,77,.25); }
+  .dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(0,0,0,.4); }
+
+  #status { font-size: 18px; min-height: 26px; text-align: center; }
+
+  /* صحنه‌ی تاس سه‌بعدی */
+  .dice-scene {
+    width: 84px;
+    height: 84px;
+    perspective: 520px;
+    cursor: pointer;
+    position: relative;
+    margin: 6px 0 10px;
+  }
+  .dice-scene.tossing { animation: toss 1.15s cubic-bezier(.3,.1,.3,1); }
+  @keyframes toss {
+    0%   { transform: translateY(0) scale(1); }
+    25%  { transform: translateY(-55px) scale(1.12); }
+    55%  { transform: translateY(6px) scale(.96); }
+    72%  { transform: translateY(-12px) scale(1.02); }
+    100% { transform: translateY(0) scale(1); }
+  }
+
+  .cube {
+    width: 84px;
+    height: 84px;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 1.1s cubic-bezier(.25,.65,.28,1);
+  }
+
+  .face {
+    position: absolute;
+    width: 84px;
+    height: 84px;
+    box-sizing: border-box;
+    padding: 12px;
+    border-radius: 14px;
+    background: linear-gradient(145deg, #ffffff 0%, #e7e7ea 100%);
+    border: 1px solid rgba(0,0,0,.12);
+    box-shadow: inset 0 0 10px rgba(0,0,0,.12);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+  }
+  .pip {
+    width: 15px;
+    height: 15px;
+    align-self: center;
+    justify-self: center;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #6a6a6a, #111);
+    box-shadow: inset 0 -1.5px 2px rgba(0,0,0,.55);
+  }
+
+  /* سایه‌ی زیر تاس برای حس عمق */
+  .dice-shadow {
+    position: absolute;
+    left: 50%;
+    bottom: -16px;
+    width: 70px;
+    height: 14px;
+    background: radial-gradient(ellipse, rgba(0,0,0,.45), rgba(0,0,0,0) 70%);
+    transform: translateX(-50%);
+    z-index: -1;
+  }
+  .dice-scene.tossing .dice-shadow { animation: shadowPulse 1.15s ease; }
+  @keyframes shadowPulse {
+    0%,100% { transform: translateX(-50%) scale(1); opacity: .45; }
+    25% { transform: translateX(-50%) scale(.5); opacity: .15; }
+    55% { transform: translateX(-50%) scale(1.05); opacity: .55; }
+  }
+
+  /* پیروزی */
+  #overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.7);
+    z-index: 10;
+    align-items: center; justify-content: center;
+  }
+  #overlay .modal {
+    background: linear-gradient(135deg, #ffd24d, #ff9800);
+    color: #1e3c72;
+    padding: 32px 40px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0,0,0,.5);
+  }
+  #overlay h2 {
+    font-family: "Lalezar", "Vazirmatn", cursive;
+    font-weight: 400;
+    font-size: 34px;
+    margin-bottom: 16px;
+  }
+  .legend { font-size: 13px; opacity: .85; margin-top: 4px; }
+</style>
+</head>
+<body>
+  <h1>🎲 بازی مارپله 🪜</h1>
+
+  <!-- تنظیمات اولیه -->
+  <div id="setup">
+    <p>چند نفر بازی می‌کنید؟</p>
+    <div>
+      <button class="count-btn" data-n="2">۲ نفر</button>
+      <button class="count-btn" data-n="3">۳ نفر</button>
+      <button class="count-btn" data-n="4">۴ نفر</button>
+    </div>
+    <p style="margin-top:18px;">
+      <button class="action-btn" id="startBtn">شروع بازی 🚀</button>
+    </p>
+    <p class="legend">🪜 نردبان شما را بالا می‌برد &nbsp;•&nbsp; 🐍 مار شما را پایین می‌کشد</p>
+  </div>
+
+  <!-- صفحه‌ی بازی -->
+  <div id="game">
+    <div id="players-bar"></div>
+    <div class="board-wrap">
+      <div id="board"></div>
+      <svg id="links" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+      <div id="pawns"></div>
+    </div>
+    <div id="panel">
+      <div id="status">برای پرتاب تاس کلیک کنید</div>
+      <div class="dice-scene" id="dice" title="برای انداختن کلیک کن">
+        <div class="cube" id="cube"></div>
+        <div class="dice-shadow"></div>
+      </div>
+      <button class="action-btn" id="restartBtn">شروع دوباره 🔄</button>
+    </div>
+  </div>
+
+  <!-- پیام پیروزی -->
+  <div id="overlay">
+    <div class="modal">
+      <h2 id="winText">🎉 برنده شد! 🎉</h2>
+      <button class="action-btn" id="playAgainBtn">بازی دوباره</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- پیکربندی مار و نردبان ----------
+  // کلید: خانه‌ی مبدأ، مقدار: خانه‌ی مقصد
+  const LADDERS = { 4:14, 9:31, 20:38, 28:84, 40:59, 51:67, 63:81, 71:91 };
+  const SNAKES  = { 17:7, 54:34, 62:19, 64:60, 87:24, 93:73, 95:75, 98:79 };
+
+  const COLORS = ["#e53935", "#1e88e5", "#43a047", "#fdd835"];
+  const NAMES  = ["قرمز", "آبی", "سبز", "زرد"];
+  const DICE_FACES = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+
+  // ---------- وضعیت بازی ----------
+  let numPlayers = 2;
+  let positions = [];     // موقعیت هر بازیکن (۰ = خارج تخته)
+  let current = 0;        // نوبت بازیکن فعلی
+  let busy = false;       // قفل در حین انیمیشن
+  let finished = false;
+
+  // ---------- المان‌ها ----------
+  const boardEl = document.getElementById("board");
+  const pawnsEl = document.getElementById("pawns");
+  const statusEl = document.getElementById("status");
+  const diceEl = document.getElementById("dice");
+  const cubeEl = document.getElementById("cube");
+  const barEl = document.getElementById("players-bar");
+  const setupEl = document.getElementById("setup");
+  const gameEl = document.getElementById("game");
+  const overlayEl = document.getElementById("overlay");
+  const winTextEl = document.getElementById("winText");
+
+  // ---------- ساخت تخته ----------
+  // خانه‌ها به‌صورت boustrophedon (مار مانند) از پایین چپ شماره‌گذاری می‌شوند
+  function cellToRowCol(n) {
+    // n از 1 تا 100
+    const rowFromBottom = Math.floor((n - 1) / 10);      // 0 = پایین‌ترین ردیف
+    const posInRow = (n - 1) % 10;
+    const col = (rowFromBottom % 2 === 0) ? posInRow : 9 - posInRow;
+    const rowFromTop = 9 - rowFromBottom;                 // برای grid
+    return { row: rowFromTop, col };
+  }
+
+  function buildBoard() {
+    boardEl.innerHTML = "";
+    // شماره‌ها را روی گرید (از بالا چپ) می‌چینیم
+    const grid = Array.from({ length: 100 });
+    for (let n = 1; n <= 100; n++) {
+      const { row, col } = cellToRowCol(n);
+      grid[row * 10 + col] = n;
+    }
+    for (let i = 0; i < 100; i++) {
+      const row = Math.floor(i / 10), col = i % 10;
+      const n = grid[i];
+      const cell = document.createElement("div");
+      // رنگ‌بندی شطرنجی واقعی بر اساس موقعیت خانه روی گرید
+      cell.className = "cell " + ((row + col) % 2 === 0 ? "light" : "dark");
+      if (n === 1) cell.classList.add("start");
+      if (n === 100) cell.classList.add("finish");
+      cell.dataset.n = n;
+      cell.textContent = toFa(n);
+      boardEl.appendChild(cell);
+    }
+  }
+
+  // ---------- رسم مار و نردبان به‌صورت SVG ----------
+  const SVGNS = "http://www.w3.org/2000/svg";
+  function svgEl(tag, attrs) {
+    const el = document.createElementNS(SVGNS, tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  }
+
+  function drawLinks() {
+    const svg = document.getElementById("links");
+    svg.innerHTML = "";
+    Object.entries(LADDERS).forEach(([from, to], i) => svg.appendChild(makeLadder(+from, +to, i)));
+    Object.entries(SNAKES).forEach(([from, to], i) => svg.appendChild(makeSnake(+from, +to, i)));
+  }
+
+  function makeLadder(from, to) {
+    const a = cellCenterPercent(from), b = cellCenterPercent(to);
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const px = -dy / len, py = dx / len;   // بردار عمود
+    const w = 1.8;                          // نصف عرض نردبان
+    const g = svgEl("g", {});
+
+    // دو ریل چوبی
+    [w, -w].forEach(o => {
+      g.appendChild(svgEl("line", {
+        x1: a.x + px * o, y1: a.y + py * o,
+        x2: b.x + px * o, y2: b.y + py * o,
+        stroke: "#7a4a1d", "stroke-width": 1.1, "stroke-linecap": "round"
+      }));
+    });
+    // پله‌ها
+    const rungs = Math.max(3, Math.round(len / 3.2));
+    for (let k = 1; k < rungs; k++) {
+      const t = k / rungs;
+      const cx = a.x + dx * t, cy = a.y + dy * t;
+      g.appendChild(svgEl("line", {
+        x1: cx + px * w, y1: cy + py * w,
+        x2: cx - px * w, y2: cy - py * w,
+        stroke: "#b5793b", "stroke-width": 0.9, "stroke-linecap": "round"
+      }));
+    }
+    return g;
+  }
+
+  function makeSnake(from, to, idx) {
+    // مار از خانه‌ی بالاتر (from) شروع می‌شود و به پایین (to) می‌رسد؛ سرش بالاست
+    const head = cellCenterPercent(from), tail = cellCenterPercent(to);
+    const dx = tail.x - head.x, dy = tail.y - head.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len, uy = dy / len;     // در امتداد بدن
+    const px = -uy, py = ux;                 // عمود (موج)
+    const palette = ["#2e9e5b", "#1f9d74", "#3aa856", "#27ae60", "#16a085"];
+    const col = palette[idx % palette.length];
+
+    const waves = Math.max(2, Math.round(len / 10));
+    const amp = 3.2;
+    const N = Math.max(14, Math.round(len * 1.4));
+    let d = "";
+    for (let k = 0; k <= N; k++) {
+      const t = k / N;
+      const bx = head.x + dx * t, by = head.y + dy * t;
+      const taper = Math.sin(t * Math.PI);           // دامنه در دو سر کمتر
+      const off = Math.sin(t * Math.PI * waves) * amp * (0.35 + 0.65 * taper);
+      const x = bx + px * off, y = by + py * off;
+      d += (k === 0 ? "M " : "L ") + x.toFixed(2) + " " + y.toFixed(2) + " ";
+    }
+
+    const g = svgEl("g", {});
+    // سایه/خط دور تیره
+    g.appendChild(svgEl("path", {
+      d, fill: "none", stroke: "rgba(0,0,0,.25)",
+      "stroke-width": 3.2, "stroke-linecap": "round", "stroke-linejoin": "round"
+    }));
+    // بدن اصلی
+    g.appendChild(svgEl("path", {
+      d, fill: "none", stroke: col,
+      "stroke-width": 2.4, "stroke-linecap": "round", "stroke-linejoin": "round"
+    }));
+    // خط پشت روشن‌تر
+    g.appendChild(svgEl("path", {
+      d, fill: "none", stroke: "rgba(255,255,255,.35)",
+      "stroke-width": 0.7, "stroke-linecap": "round", "stroke-linejoin": "round",
+      "stroke-dasharray": "1.4 2.2"
+    }));
+
+    // سر مار
+    const hr = 2.2;
+    g.appendChild(svgEl("circle", { cx: head.x, cy: head.y, r: hr, fill: col, stroke: "rgba(0,0,0,.3)", "stroke-width": 0.4 }));
+    // چشم‌ها
+    const eo = 0.9;
+    [-1, 1].forEach(s => {
+      g.appendChild(svgEl("circle", { cx: head.x + px * eo * s, cy: head.y + py * eo * s, r: 0.55, fill: "#fff" }));
+      g.appendChild(svgEl("circle", { cx: head.x + px * eo * s, cy: head.y + py * eo * s, r: 0.25, fill: "#000" }));
+    });
+    // زبان (به سمت بیرونِ بدن)
+    const tx = head.x - ux * (hr + 1.4), ty = head.y - uy * (hr + 1.4);
+    const mx = head.x - ux * hr, my = head.y - uy * hr;
+    g.appendChild(svgEl("line", { x1: mx, y1: my, x2: tx, y2: ty, stroke: "#e53935", "stroke-width": 0.5, "stroke-linecap": "round" }));
+    g.appendChild(svgEl("line", { x1: tx, y1: ty, x2: tx - ux * 0.6 + px * 0.6, y2: ty - uy * 0.6 + py * 0.6, stroke: "#e53935", "stroke-width": 0.45, "stroke-linecap": "round" }));
+    g.appendChild(svgEl("line", { x1: tx, y1: ty, x2: tx - ux * 0.6 - px * 0.6, y2: ty - uy * 0.6 - py * 0.6, stroke: "#e53935", "stroke-width": 0.45, "stroke-linecap": "round" }));
+    return g;
+  }
+
+  // مرکز یک خانه را به درصد (برای left/top مهره) تبدیل می‌کند
+  function cellCenterPercent(n) {
+    if (n < 1) {
+      // خارج تخته: نزدیک خانه‌ی ۱ ولی کمی پایین‌تر
+      return { x: 5 + Math.random() * 0, y: 99 };
+    }
+    const { row, col } = cellToRowCol(n);
+    return { x: (col + 0.5) * 10, y: (row + 0.5) * 10 };
+  }
+
+  // ---------- مهره‌ها ----------
+  function buildPawns() {
+    pawnsEl.innerHTML = "";
+    for (let i = 0; i < numPlayers; i++) {
+      const p = document.createElement("div");
+      p.className = "pawn";
+      p.id = "pawn-" + i;
+      p.style.background = COLORS[i];
+      pawnsEl.appendChild(p);
+    }
+    updatePawns();
+  }
+
+  function updatePawns() {
+    for (let i = 0; i < numPlayers; i++) {
+      const p = document.getElementById("pawn-" + i);
+      const { x, y } = cellCenterPercent(positions[i]);
+      // پخش کردن چند مهره در یک خانه تا روی هم نیفتند
+      const samCell = [];
+      for (let j = 0; j < numPlayers; j++) if (positions[j] === positions[i]) samCell.push(j);
+      const idx = samCell.indexOf(i);
+      const offset = (idx - (samCell.length - 1) / 2) * 3.2;
+      p.style.left = (x + offset) + "%";
+      p.style.top = (y - (positions[i] >= 1 ? 0 : 0)) + "%";
+    }
+  }
+
+  // ---------- نوار بازیکنان ----------
+  function buildBar() {
+    barEl.innerHTML = "";
+    for (let i = 0; i < numPlayers; i++) {
+      const chip = document.createElement("div");
+      chip.className = "pchip" + (i === current ? " active" : "");
+      chip.id = "chip-" + i;
+      chip.innerHTML = `<span class="dot" style="background:${COLORS[i]}"></span>
+        <span>${NAMES[i]}</span><span class="pos">(${toFa(positions[i])})</span>`;
+      barEl.appendChild(chip);
+    }
+  }
+  function updateBar() {
+    for (let i = 0; i < numPlayers; i++) {
+      const chip = document.getElementById("chip-" + i);
+      chip.classList.toggle("active", i === current);
+      chip.querySelector(".pos").textContent = `(${toFa(positions[i])})`;
+    }
+  }
+
+  // ---------- ابزار ----------
+  function toFa(num) {
+    return String(num).replace(/\d/g, d => "۰۱۲۳۴۵۶۷۸۹"[d]);
+  }
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  // ---------- ساخت تاس سه‌بعدی ----------
+  // چیدمان وجه‌ها: مجموع وجه‌های روبه‌رو همیشه ۷ است
+  const FACES = [
+    { value: 1, transform: "translateZ(42px)" },
+    { value: 6, transform: "rotateY(180deg) translateZ(42px)" },
+    { value: 3, transform: "rotateY(90deg) translateZ(42px)" },
+    { value: 4, transform: "rotateY(-90deg) translateZ(42px)" },
+    { value: 5, transform: "rotateX(90deg) translateZ(42px)" },
+    { value: 2, transform: "rotateX(-90deg) translateZ(42px)" },
+  ];
+  // چیدمان نقطه‌ها روی شبکه‌ی ۳×۳ برای هر عدد
+  const PIPS = {
+    1: [5], 2: [1, 9], 3: [1, 5, 9],
+    4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9],
+  };
+  // چرخش لازم برای آوردن هر عدد روبه‌روی بازیکن
+  const FACE_ROT = {
+    1: { x: 0, y: 0 }, 6: { x: 0, y: 180 },
+    3: { x: 0, y: -90 }, 4: { x: 0, y: 90 },
+    5: { x: -90, y: 0 }, 2: { x: 90, y: 0 },
+  };
+  // زاویه‌ی استراحت تاس (نمای کمی مورب برای حس سه‌بعدی)
+  const REST_X = -22, REST_Y = 28;
+  let diceTurns = 0;
+
+  function buildDice() {
+    cubeEl.innerHTML = "";
+    FACES.forEach(f => {
+      const face = document.createElement("div");
+      face.className = "face";
+      face.style.transform = f.transform;
+      PIPS[f.value].forEach(idx => {
+        const pip = document.createElement("span");
+        pip.className = "pip";
+        pip.style.gridRow = Math.ceil(idx / 3);
+        pip.style.gridColumn = ((idx - 1) % 3) + 1;
+        face.appendChild(pip);
+      });
+      cubeEl.appendChild(face);
+    });
+    diceTurns = 0;
+    cubeEl.style.transition = "none";
+    cubeEl.style.transform = `rotateX(${FACE_ROT[1].x + REST_X}deg) rotateY(${FACE_ROT[1].y + REST_Y}deg)`;
+  }
+
+  function spinDiceTo(value) {
+    diceTurns += 4;                 // چند دور کامل اضافه برای حس چرخش واقعی
+    const b = FACE_ROT[value];
+    const x = b.x + 360 * diceTurns + REST_X;
+    const y = b.y + 360 * diceTurns + REST_Y;
+    cubeEl.style.transition = "transform 1.1s cubic-bezier(.25,.65,.28,1)";
+    cubeEl.style.transform = `rotateX(${x}deg) rotateY(${y}deg)`;
+  }
+
+  // ---------- پرتاب تاس ----------
+  async function rollDice() {
+    if (busy || finished) return;
+    busy = true;
+
+    const roll = 1 + Math.floor(Math.random() * 6);
+    statusEl.textContent = `${NAMES[current]} تاس را انداخت...`;
+    diceEl.classList.add("tossing");   // پرش به بالا
+    spinDiceTo(roll);                  // چرخش و فرود روی عدد
+    await sleep(1150);
+    diceEl.classList.remove("tossing");
+
+    statusEl.textContent = `${NAMES[current]} عدد ${toFa(roll)} آورد`;
+    await sleep(350);
+
+    await movePlayer(roll);
+    busy = false;
+  }
+
+  async function movePlayer(roll) {
+    let pos = positions[current];
+    let target = pos + roll;
+
+    // اگر بیشتر از ۱۰۰ شد، حرکت نمی‌کند (باید دقیقاً ۱۰۰ شود)
+    if (target > 100) {
+      statusEl.textContent = `${NAMES[current]} عدد لازم را نیاورد و در جای خود ماند`;
+      await sleep(700);
+      nextTurn();
+      return;
+    }
+
+    // حرکت گام‌به‌گام
+    for (let s = pos + 1; s <= target; s++) {
+      positions[current] = s;
+      updatePawns();
+      updateBar();
+      await sleep(180);
+    }
+
+    // بررسی برد
+    if (target === 100) {
+      win();
+      return;
+    }
+
+    // مار یا نردبان
+    if (LADDERS[target]) {
+      statusEl.textContent = `🪜 نردبان! ${NAMES[current]} بالا رفت`;
+      await sleep(500);
+      positions[current] = LADDERS[target];
+      updatePawns(); updateBar();
+      await sleep(400);
+    } else if (SNAKES[target]) {
+      statusEl.textContent = `🐍 مار! ${NAMES[current]} پایین آمد`;
+      await sleep(500);
+      positions[current] = SNAKES[target];
+      updatePawns(); updateBar();
+      await sleep(400);
+    }
+
+    // ۶ آوردن نوبت اضافه می‌دهد
+    if (roll === 6) {
+      statusEl.textContent = `${NAMES[current]} عدد ۶ آورد و دوباره بازی می‌کند! 🎲`;
+      updateBar();
+      return;
+    }
+
+    nextTurn();
+  }
+
+  function nextTurn() {
+    current = (current + 1) % numPlayers;
+    updateBar();
+    statusEl.textContent = `نوبت ${NAMES[current]} — تاس را بزن`;
+  }
+
+  function win() {
+    finished = true;
+    updatePawns();
+    winTextEl.textContent = `🎉 بازیکن ${NAMES[current]} برنده شد! 🎉`;
+    overlayEl.style.display = "flex";
+  }
+
+  // ---------- جریان بازی ----------
+  function startGame() {
+    positions = Array(numPlayers).fill(0);
+    current = 0;
+    finished = false;
+    busy = false;
+    setupEl.style.display = "none";
+    gameEl.style.display = "flex";
+    overlayEl.style.display = "none";
+    buildBoard();
+    drawLinks();
+    buildPawns();
+    buildBar();
+    buildDice();
+    statusEl.textContent = `نوبت ${NAMES[current]} — تاس را بزن`;
+  }
+
+  function backToSetup() {
+    gameEl.style.display = "none";
+    overlayEl.style.display = "none";
+    setupEl.style.display = "block";
+  }
+
+  // ---------- رویدادها ----------
+  document.querySelectorAll(".count-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".count-btn").forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      numPlayers = parseInt(btn.dataset.n, 10);
+    });
+  });
+  // پیش‌فرض: ۲ نفر انتخاب شده
+  document.querySelector('.count-btn[data-n="2"]').classList.add("selected");
+
+  document.getElementById("startBtn").addEventListener("click", startGame);
+  document.getElementById("restartBtn").addEventListener("click", backToSetup);
+  document.getElementById("playAgainBtn").addEventListener("click", startGame);
+  diceEl.addEventListener("click", rollDice);
+})();
+</script>
+</body>
+</html>
