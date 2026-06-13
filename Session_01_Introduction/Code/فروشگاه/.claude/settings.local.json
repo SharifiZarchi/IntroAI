@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" --max-time 6 \"https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap\")",
+      "Bash(npm --version)"
+    ]
+  }
+}
