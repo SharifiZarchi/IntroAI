@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "marpele",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["/Users/teacher/Desktop/AICourse/مارپله/.claude/server.js"],
+      "port": 8770
+    }
+  ]
+}

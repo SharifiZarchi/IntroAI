@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "shop",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js"],
+      "port": 8765
+    }
+  ]
+}
